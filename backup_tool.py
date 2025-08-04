@@ -10,7 +10,9 @@ import zipfile
 package_keyword = "balatro"
 save_location = {"balatro": [f"extracted_backup/apps/com.playstack.balatro.android/f/1-meta.jkr",
                              f"extracted_backup/apps/com.playstack.balatro.android/f/1-profile.jkr"]}
+save_location_pc = {"balatro": os.path.join(os.environ["APPDATA"], "Balatro")}
 backup_file_names = {"balatro": ["1-meta.jkr", "1-profile.jkr"]}
+pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
 abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-62310d4.jar"
 adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 
@@ -84,88 +86,129 @@ def execute_command(command, verbose=True, commence_msg="Executing command", suc
     print()
 
 
-# TODO: Add check for adb in path
-# Download adb
-if not check_file_in_dir("adb.exe"):
-    print("Downloading Android Debugger Bridge (adb)...")
-    response = requests.get(adb_download_link)
-    if response.status_code == 200:
-        with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-            adb_files = [f for f in z.namelist() if f.endswith("adb.exe")]
-            if adb_files:
-                adb_path_in_zip = adb_files[0]
-                # print(f"Extracting {adb_path_in_zip}...")
-                z.extract(adb_path_in_zip, ".")
-                extracted_path = os.path.join(".", adb_path_in_zip)
-                final_path = os.path.join(".", "adb.exe")
-                os.replace(extracted_path, final_path)
-                # print("adb.exe extracted successfully.")
-            else:
-                print("adb.exe not found in ZIP.")
+def copy_backup_to_pc_folder():
+    # transfer save files to balatro pc save location
+    make_pc_save = input(f"Do you want to copy the extracted save to the pc version of {package_keyword}?\n"
+                         f"WARNING: This will replace your Profile 1 PC save!"
+                         f" Type Y(Yes) or N(No)").lower()
+    if make_pc_save == "n":
+        exit(0)
+    if make_pc_save != "y":
+        exit(1)
+    main_location = save_location_pc[package_keyword]
+    # TODO: replace_save = input(f"Do you want to replace existing profile 1 save?"
+    #                      f" Type Y to replace or N to create a new profile").lower()
+    full_location = os.path.join(main_location, "1")
+    # TODO: Handle keeping save case
+    # TODO: Ensure destination folder exists
+    source_file_names = backup_file_names[package_keyword]
+    dest_file_names = pc_file_names[package_keyword]
+    flag = True
+    for (idx, file) in enumerate(source_file_names):
+        source_path = os.path.join(os.getcwd(), file)
+        os.makedirs(full_location, exist_ok=True)
+        destination_path = os.path.join(full_location, dest_file_names[idx])
+        try:
+            shutil.copy2(source_path, destination_path)
+        except Exception as e:
+            flag = False
+            break
+    if not flag:
+        print(f"ERROR converting to PC save. Manually copy the files to {package_keyword} pc save location")
     else:
-        print(f"Download failed: {response.status_code}")
+        print("Successfully copied Android save files to PC")
+
+
+def backup_tool():
+    # TODO: Add check for adb in path
+    # Download adb
+    if not check_file_in_dir("adb.exe"):
+        print("Downloading Android Debugger Bridge (adb)...")
+        response = requests.get(adb_download_link)
+        if response.status_code == 200:
+            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+                adb_files = [f for f in z.namelist() if f.endswith("adb.exe")]
+                if adb_files:
+                    adb_path_in_zip = adb_files[0]
+                    # print(f"Extracting {adb_path_in_zip}...")
+                    z.extract(adb_path_in_zip, ".")
+                    extracted_path = os.path.join(".", adb_path_in_zip)
+                    final_path = os.path.join(".", "adb.exe")
+                    os.replace(extracted_path, final_path)
+                    # print("adb.exe extracted successfully.")
+                else:
+                    print("adb.exe not found in ZIP.")
+        else:
+            print(f"Download failed: {response.status_code}")
+        print()
+
+    # Check for device
+    execute_command("adb devices", commence_msg="Checking connected devices...", print_std=False,
+                    callback=device_connection_check)
+
+    # list all packages
+    execute_command("adb shell pm list packages",
+                    commence_msg=f"Checking for package associated with {package_keyword} in device...",
+                    callback=check_package)
+
+    # take backup if backup doesn't exist
+    backup_exists = check_existing_backup()
+    if not backup_exists:
+        execute_command("adb backup -apk -f backup.ab com.playstack.balatro.android",
+                        commence_msg=f"Taking backup. Confirm on your android device to proceed.",
+                        error_msg="Backup failed", callback=check_successful_backup)
+    else:
+        exit(1)
+
+    # download abe if it doesn't exist
+    if not check_file_in_dir("abe.jar"):
+        print("Downloading Android Backup Extractor...")
+        response = requests.get(abe_download_link)
+        if response.status_code == 200:
+            with open("abe.jar", "wb") as f:
+                f.write(response.content)
+        else:
+            print(f"Download failed Status code: {response.status_code}")
+            exit(1)
+            print("\n")
+
+        if check_file_in_dir("abe.jar"):
+            print("Downloaded ABE successfully")
+        else:
+            print("ABE download finished but couldn't find \"abe.jar\" file")
+        print()
+
+    # use abe to convert to tar file
+    execute_command("java -jar abe.jar unpack backup.ab backup.tar",
+                    commence_msg="Unpacking backup to tar file", error_msg="Converting to tar failed",
+                    callback=check_successful_ab2tar)
+
+    # extract .tar file to 'extracted_backup' folder
+    print("Extracting tar file")
+    extract_to = 'extracted_backup'
+    with tarfile.open("backup.tar", 'r') as tar:
+        tar.extractall(path=extract_to)
+    print(f"Successfully extracted tar files\n")
+
+    # copy save files to main folder
+    # TODO: add for more apps
+    backup_file_paths = save_location["balatro"]
+    flag = True
+    for path in backup_file_paths:
+        destination_path = os.path.join(os.getcwd(), os.path.basename(path))
+        try:
+            shutil.copy2(path, destination_path)
+        except FileNotFoundError:
+            flag = False
+    if not flag:
+        print("Backup was successful but backup files were not found in their usual location\nSearch the"
+              " \"extracted backup\" folder manually for the files.")
+        exit(0)
+    else:
+        print("Backup successful. You can now disconnect your device.")
     print()
 
-# Check for device
-execute_command("adb devices", commence_msg="Checking connected devices...", print_std=False,
-                callback=device_connection_check)
 
-# list all packages
-execute_command("adb shell pm list packages",
-                commence_msg=f"Checking for package associated with {package_keyword} in device...",
-                callback=check_package)
-
-# take backup if backup doesn't exist
-backup_exists = check_existing_backup()
-if not backup_exists:
-    execute_command("adb backup -apk -f backup.ab com.playstack.balatro.android",
-                    commence_msg=f"Taking backup. Confirm on your android device to proceed.",
-                    error_msg="Backup failed", callback=check_successful_backup)
-else:
-    exit(1)
-
-# download abe if it doesn't exist
-if not check_file_in_dir("abe.jar"):
-    print("Downloading Android Backup Extractor...")
-    response = requests.get(abe_download_link)
-    if response.status_code == 200:
-        with open("abe.jar", "wb") as f:
-            f.write(response.content)
-    else:
-        print(f"Download failed Status code: {response.status_code}")
-        exit(1)
-        print("\n")
-
-    if check_file_in_dir("abe.jar"):
-        print("Downloaded ABE successfully")
-    else:
-        print("ABE download finished but couldn't find \"abe.jar\" file")
-    print("\n")
-
-# use abe to convert to tar file
-execute_command("java -jar abe.jar unpack backup.ab backup.tar",
-                commence_msg="Unpacking backup to tar file", error_msg="Converting to tar failed",
-                callback=check_successful_ab2tar)
-
-# extract .tar file to 'extracted_backup' folder
-print("Extracting tar file")
-extract_to = 'extracted_backup'
-with tarfile.open("backup.tar", 'r') as tar:
-    tar.extractall(path=extract_to)
-print(f"Successfully extracted tar files\n")
-
-# copy save files to main folder
-# TODO: add for more apps
-backup_file_paths = save_location["balatro"]
-flag = True
-for path in backup_file_paths:
-    destination_path = os.path.join(os.getcwd(), os.path.basename(path))
-    try:
-        shutil.copy2(path, destination_path)
-    except FileNotFoundError:
-        flag = False
-if not flag:
-    print("Backup was successful but backup files were not found in their usual location\nSearch the"
-          " \"extracted backup\" folder manually for the files.")
-else:
-    print("Backup successful. You can now disconnect your device.")
+if __name__ == "__main__":
+    backup_tool()
+    copy_backup_to_pc_folder()
