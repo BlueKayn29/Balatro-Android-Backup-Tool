@@ -13,7 +13,8 @@ save_location = {"balatro": [f"extracted_backup/apps/com.playstack.balatro.andro
 save_location_pc = {"balatro": os.path.join(os.environ["APPDATA"], "Balatro")}
 backup_file_names = {"balatro": ["1-meta.jkr", "1-profile.jkr"]}
 pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
-abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-62310d4.jar"
+abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-e252b0b.jar"
+# TODO: make dynamic ^^^
 adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 
 
@@ -90,7 +91,7 @@ def copy_backup_to_pc_folder():
     # transfer save files to balatro pc save location
     make_pc_save = input(f"Do you want to copy the extracted save to the pc version of {package_keyword}?\n"
                          f"WARNING: This will replace your Profile 1 PC save!"
-                         f" Type Y(Yes) or N(No)").lower()
+                         f" Type Y(Yes) or N(No)").strip().lower()
     if make_pc_save == "n":
         exit(0)
     if make_pc_save != "y":
