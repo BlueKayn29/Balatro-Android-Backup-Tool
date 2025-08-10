@@ -84,6 +84,7 @@ def execute_command(command, verbose=True, commence_msg="Executing command", suc
             print(error_msg)
         if print_std and verbose:
             print("STDERR: ", result.stderr)
+        exit(1)
     print()
 
 
@@ -124,38 +125,37 @@ def backup_tool():
     # TODO: Add check for adb in path
     # Download adb
     if not check_file_in_dir("adb.exe"):
-        print("Downloading Android Debugger Bridge (adb)...")
+        print("Downloading Android Debug Bridge (adb)...")
         response = requests.get(adb_download_link)
         if response.status_code == 200:
             with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-                adb_files = [f for f in z.namelist() if f.endswith("adb.exe")]
-                if adb_files:
-                    adb_path_in_zip = adb_files[0]
-                    # print(f"Extracting {adb_path_in_zip}...")
-                    z.extract(adb_path_in_zip, ".")
-                    extracted_path = os.path.join(".", adb_path_in_zip)
-                    final_path = os.path.join(".", "adb.exe")
-                    os.replace(extracted_path, final_path)
-                    # print("adb.exe extracted successfully.")
-                else:
-                    print("adb.exe not found in ZIP.")
+                z.extractall("platform-tools")
+            # print("ADB downloaded and extracted successfully.")
         else:
             print(f"Download failed: {response.status_code}")
+            exit(1)
         print()
 
+    # Always set adb_path to the extracted location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    adb_path = os.path.join(script_dir, "platform-tools", "platform-tools", "adb.exe")
+
+    if not os.path.exists(adb_path):
+        adb_path = os.path.join(script_dir, "platform-tools", "adb.exe")
+
     # Check for device
-    execute_command("adb devices", commence_msg="Checking connected devices...", print_std=False,
+    execute_command(f"\"{adb_path}\" devices", commence_msg="Checking connected devices...", print_std=False,
                     callback=device_connection_check)
 
     # list all packages
-    execute_command("adb shell pm list packages",
+    execute_command(f"\"{adb_path}\" shell pm list packages",
                     commence_msg=f"Checking for package associated with {package_keyword} in device...",
                     callback=check_package)
 
     # take backup if backup doesn't exist
     backup_exists = check_existing_backup()
     if not backup_exists:
-        execute_command("adb backup -apk -f backup.ab com.playstack.balatro.android",
+        execute_command(f"\"{adb_path}\" backup -apk -f backup.ab com.playstack.balatro.android",
                         commence_msg=f"Taking backup. Confirm on your android device to proceed.",
                         error_msg="Backup failed", callback=check_successful_backup)
     else:
