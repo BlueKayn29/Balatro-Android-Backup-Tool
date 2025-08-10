@@ -1,4 +1,5 @@
-**********BALATRO ANDROID BACKUP TOOL**********
+**********BALATRO SAVE TRANSFER TOOL**********
+		(Android to PC)
 
 
 Requirement:
