@@ -16,8 +16,9 @@ pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
 abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-e252b0b.jar"
 # TODO: make dynamic ^^^
 adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
-java_download_link = "https://github.com/adoptium/temurin21-binaries/releases/latest/download/" \
-                     "OpenJDK21U-jdk_x64_windows_hotspot.zip"
+java_download_link = "https://adoptium.net/en-GB/download?link=https%3A%2F%2Fgithub.com%2Fadoptium%2Ftemurin17-" \
+                     "binaries%2Freleases%2Fdownload%2Fjdk-17.0.16%252B8%2FOpenJDK17U-jdk_x64_windows_hotspot" \
+                     "_17.0.16_8.zip&vendor=Adoptium"
 
 
 # TODO: fix this ^^^
