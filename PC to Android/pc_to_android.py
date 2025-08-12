@@ -82,7 +82,7 @@ if __name__ == "__main__":
         exit(1)
 
     warning_check = input("Are you sure you want to proceed"
-                          " (Read the above warning)? Type Y (yes) or N (no): ").strip().lower()
+                          "(Read the above warning)? Type Y (yes) or N (no): ").strip().lower()
     if warning_check not in ['y', 'yes']:
         print("Operation cancelled by user.")
         exit(1)

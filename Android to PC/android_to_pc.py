@@ -18,9 +18,8 @@ abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releas
 adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 java_download_link = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/" \
                      "OpenJDK17U-jdk_x64_windows_hotspot_17.0.16_8.zip"
-
-
-# TODO: fix this ^^^
+pkg_to_valid_pc_profiles = {"balatro": ["1", "2", "3"]}
+pkg_to_valid_android_profiles = {"balatro": ["1", "2", "3"]}
 
 
 def check_package(stdout):
@@ -152,18 +151,30 @@ def execute_command(command, verbose=True, commence_msg="Executing command", suc
 def copy_backup_to_pc_folder():
     # transfer save files to balatro pc save location
     make_pc_save = input(f"Do you want to copy the extracted save to the pc version of {package_keyword}?\n"
-                         f"WARNING: This will replace your Profile 1 PC save!"
                          f" Type Y(Yes) or N(No)").strip().lower()
     if make_pc_save == "n":
         exit(0)
     if make_pc_save != "y":
         exit(1)
+
     main_location = save_location_pc[package_keyword]
-    # TODO: replace_save = input(f"Do you want to replace existing profile 1 save?"
-    #                      f" Type Y to replace or N to create a new profile").lower()
-    full_location = os.path.join(main_location, "1")
-    # TODO: Handle keeping save case
-    # TODO: Ensure destination folder exists
+    if not os.path.exists(main_location):
+        print("Balatro not found on PC")
+        print("You can manually copy save files from this directory")
+        exit(1)
+
+    valid_pc_profiles = pkg_to_valid_pc_profiles[package_keyword]
+    pc_profile_no = input(f"Enter the PC PROFILE NUMBER to OVERWRITE (choose from {', '.join(valid_pc_profiles)}): ").strip().lower()
+    if pc_profile_no not in valid_pc_profiles:
+        print("Error: This PC profile does not exist.")
+        exit(1)
+    warning_check = input(f"WARNING: This will overwrite you PC profile {pc_profile_no}!!"
+                          "Are you sure you want to proceed? Type Y (yes) or N (no): ").strip().lower()
+    if warning_check not in ['y', 'yes']:
+        print("Operation cancelled by user.")
+        exit(1)
+
+    full_location = os.path.join(main_location, pc_profile_no)
     source_file_names = backup_file_names[package_keyword]
     dest_file_names = pc_file_names[package_keyword]
     flag = True
