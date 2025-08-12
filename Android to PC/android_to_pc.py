@@ -78,19 +78,27 @@ def setup_tool(tool_name, exe_rel_path, download_url, local_folder):
     :param local_folder: Folder name to extract to inside script directory
     :return: Full command path as string, quoted if needed
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    tool_dir = os.path.join(script_dir, local_folder)
-    tool_bin = os.path.join(tool_dir, exe_rel_path)
-
     # If tool is already in PATH
     if shutil.which(tool_name):
         print(f"{tool_name} is already installed.\n")
         return tool_name
 
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    tool_dir = os.path.join(script_dir, local_folder)
+    tool_path = os.path.join(tool_dir, exe_rel_path)
+
+    # If not found, check inside first subfolder
+    if not os.path.isfile(tool_path) and os.path.isdir(tool_dir):
+        subfolders = [f.path for f in os.scandir(tool_dir) if f.is_dir()]
+        if subfolders:
+            possible_path = os.path.join(subfolders[0], exe_rel_path)
+            if os.path.isfile(possible_path):
+                tool_path = possible_path
+
     # If local copy exists
-    if os.path.exists(tool_bin):
+    if os.path.exists(tool_path):
         print(f"Using local {tool_name} from script directory.\n")
-        return f"\"{tool_bin}\""
+        return f"\"{tool_path}\""
 
     # Download tool
     print(f"{tool_name} not found. Downloading from {download_url}...")
@@ -100,20 +108,21 @@ def setup_tool(tool_name, exe_rel_path, download_url, local_folder):
     with zipfile.ZipFile(io.BytesIO(response.content)) as z:
         z.extractall(tool_dir)
 
-    # If it extracted into a subfolder, adjust path
-    extracted_folders = [f.path for f in os.scandir(tool_dir) if f.is_dir()]
-    if extracted_folders:
-        # In case the actual tool is inside the first extracted subfolder
-        maybe_bin = os.path.join(extracted_folders[0], exe_rel_path)
-        if os.path.exists(maybe_bin):
-            tool_bin = maybe_bin
+    # After extraction, check both top-level and first subfolder
+    tool_path = os.path.join(tool_dir, exe_rel_path)
+    if not os.path.isfile(tool_path):
+        subfolders = [f.path for f in os.scandir(tool_dir) if f.is_dir()]
+        if subfolders:
+            possible_path = os.path.join(subfolders[0], exe_rel_path)
+            if os.path.isfile(possible_path):
+                tool_path = possible_path
 
-    if not os.path.exists(tool_bin):
+    if not os.path.isfile(tool_path):
         print(f"Failed to install {tool_name}")
         exit(1)
 
-    print(f"{tool_name} installed locally at {tool_bin}\n")
-    return f"\"{tool_bin}\""
+    print(f"{tool_name} installed locally at {tool_path}\n")
+    return f"\"{tool_path}\""
 
 
 def execute_command(command, verbose=True, commence_msg="Executing command", success_msg=None,
@@ -180,7 +189,7 @@ def backup_tool():
         exe_rel_path="adb.exe",
         download_url=adb_download_link,
         local_folder="platform-tools"
-    )
+    ) # TODO: fix path to platform-tools/platform-tools
 
     # Setup jdk
     java_cmd = setup_tool(
