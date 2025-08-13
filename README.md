@@ -56,6 +56,8 @@ Allows you to backup or restore Balatro save files.
    - Ensure **only one** `meta.jkr` and one `profile.jkr` file are present.
 4. Follow on-screen instructions to restore your saves.
 
+**Backup Usage:**
+For now, use Android → PC (Save Transfer Tool) to Backup. PC Balatro is not required for this.
 ---
 
 ## **Important Notes**
