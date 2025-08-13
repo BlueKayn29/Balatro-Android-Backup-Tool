@@ -57,7 +57,7 @@ Allows you to backup or restore Balatro save files.
 4. Follow on-screen instructions to restore your saves.
 
 **Backup Usage:**
-For now, use Android → PC (Save Transfer Tool) to Backup. PC Balatro is not required for this.
+1. For now, use Android → PC (Save Transfer Tool) to Backup. PC Balatro is not required for this.
 ---
 
 ## **Important Notes**
