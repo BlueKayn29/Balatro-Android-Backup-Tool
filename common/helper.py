@@ -10,14 +10,13 @@ import zipfile
 package_keyword = "balatro"
 package_keyword_to_name = {"balatro": "com.playstack.balatro.android"}
 
-save_location = {"balatro": [f"extracted_backup/apps/com.playstack.balatro.android/f/1-meta.jkr",
-                             f"extracted_backup/apps/com.playstack.balatro.android/f/1-profile.jkr"]}
+extracted_save_location = {"balatro": f"extracted_backup/apps/com.playstack.balatro.android/f/"}
 # TODO: Dynamically set profile no
 
 save_location_pc = {"balatro": os.path.join(os.environ["APPDATA"], "Balatro")}
 save_location_android = {"balatro": "files/"}
 
-android_file_names = {"balatro": ["3-meta.jkr", "3-profile.jkr"]} # TODO: Dynamically set profile no
+# android_file_names = {"balatro": ["3-meta.jkr", "3-profile.jkr"]} # TODO: Dynamically set profile no
 pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
 
 adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
@@ -113,6 +112,14 @@ def list_packages(adb_path):
     execute_command(f"{adb_path} shell pm list packages",
                     commence_msg=f"Checking for package associated with {package_keyword} in device...",
                     callback=check_package)
+
+
+def android_profile_to_file_name(android_profile_no):
+    android_file_names = []
+    if package_keyword == 'balatro':
+        for file_name in pc_file_names[package_keyword]:
+            android_file_names.append(android_profile_no + "-" + file_name)
+    return android_file_names
 
 
 def execute_command(command, verbose=True, commence_msg="Executing command", success_msg=None,

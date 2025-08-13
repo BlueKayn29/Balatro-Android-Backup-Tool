@@ -6,11 +6,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))  # for 
 from helper import *
 
 backup_file_names = {"balatro": ["1-meta.jkr", "1-profile.jkr"]}
-pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
 abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-e252b0b.jar"
 # TODO: make dynamic ^^^
 java_download_link = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/" \
                      "OpenJDK17U-jdk_x64_windows_hotspot_17.0.16_8.zip"
+extracted_folder_name = "extracted_backup"
 
 
 def check_package(stdout):
@@ -48,30 +48,29 @@ def check_file_in_dir(filename):
     return os.path.isfile(filename)
 
 
-def check_existing_backup():
-    flag = False
-    for file in backup_file_names[package_keyword]:
-        if os.path.isfile(file):
-            print(f"Backup file \"{file}\" already exists in current directory")
-            flag = True
-    if flag:
-        print("One or more backup files already exist. Delete or move them before continuing.")
-    return flag
+# def check_existing_backup():
+#     flag = False
+#     for file in backup_file_names[package_keyword]:
+#         if os.path.isfile(file):
+#             print(f"Backup file \"{file}\" already exists in current directory")
+#             flag = True
+#     if flag:
+#         print("One or more backup files already exist. Delete or move them before continuing.")
+#     return flag # FIXME
 
 
-def copy_backup_to_pc_folder():
+def copy_backup_to_pc_folder(android_profile_no):
     # transfer save files to balatro pc save location
     make_pc_save = input(f"Do you want to copy the extracted save to the pc version of {package_keyword}?\n"
                          f"Type Y(Yes) or N(No)").strip().lower()
-    if make_pc_save == "n":
-        exit(0)
-    if make_pc_save != "y":
+    if make_pc_save not in ['y', 'yes']:
+        print(f"Backup successfully extracted to {extracted_folder_name} folder.")
         exit(1)
 
     main_location = save_location_pc[package_keyword]
     if not os.path.exists(main_location):
         print("Balatro not found on PC")
-        print("You can manually copy save files from this directory")
+        print(f"Backup successfully extracted to {extracted_folder_name} folder. You can manually copy from there.")
         exit(1)
 
     valid_pc_profiles = pkg_to_valid_pc_profiles[package_keyword]
@@ -87,11 +86,12 @@ def copy_backup_to_pc_folder():
         exit(1)
 
     full_location = os.path.join(main_location, pc_profile_no)
-    source_file_names = backup_file_names[package_keyword]
+    source_file_names = android_profile_to_file_name(android_profile_no)
     dest_file_names = pc_file_names[package_keyword]
+    source_dir = os.path.join(os.getcwd(), extracted_folder_name)
     flag = True
     for (idx, file) in enumerate(source_file_names):
-        source_path = os.path.join(os.getcwd(), file)
+        source_path = os.path.join(source_dir, file)
         os.makedirs(full_location, exist_ok=True)
         destination_path = os.path.join(full_location, dest_file_names[idx])
         try:
@@ -107,13 +107,24 @@ def copy_backup_to_pc_folder():
 
 def take_backup(adb_cmd):
     # take backup if backup doesn't exist
-    backup_exists = check_existing_backup()
+    # backup_exists = check_existing_backup() # FIXME
+    backup_exists = False
+
+    valid_android_profiles = pkg_to_valid_android_profiles[package_keyword]
+    android_profile_no = input(f"Enter the Android PROFILE NUMBER to copy "
+                               f"(choose from {', '.join(valid_android_profiles)}): ").strip()
+    if android_profile_no not in valid_android_profiles:
+        print("Error: This Android profile does not exist.")
+        exit(1)
+
     if not backup_exists:
         execute_command(f"{adb_cmd} backup -apk -f backup.ab com.playstack.balatro.android",
                         commence_msg=f"Taking backup. Confirm on your android device to proceed.",
                         error_msg="Backup failed", callback=check_successful_backup)
     else:
         exit(1)
+
+    return android_profile_no
 
 
 def process_backup_files(java_cmd):
@@ -124,20 +135,24 @@ def process_backup_files(java_cmd):
 
     # extract .tar file to 'extracted_backup' folder
     print("Extracting tar file")
-    extract_to = 'extracted_backup'
+    extract_to = extracted_folder_name
     with tarfile.open("backup.tar", 'r') as tar:
         tar.extractall(path=extract_to)
     print(f"Successfully extracted tar files\n")
 
 
-def finalize_android_backup():
+def finalize_android_backup(android_profile_no):
     # copy save files to main folder
-    backup_file_paths = save_location["balatro"]
+    backup_file_path = extracted_save_location[package_keyword]
+    android_file_names = android_profile_to_file_name(android_profile_no)
     flag = True
-    for path in backup_file_paths:
-        destination_path = os.path.join(os.getcwd(), os.path.basename(path))
+    target_dir = os.path.join(os.getcwd(), extracted_folder_name)
+    os.makedirs(target_dir, exist_ok=True)
+    for android_file_name in android_file_names:
+        source_path = os.path.join(backup_file_path, android_file_name)
+        destination_path = os.path.join(target_dir, android_file_name)
         try:
-            shutil.copy2(path, destination_path)
+            shutil.copy2(source_path, destination_path)
         except FileNotFoundError:
             flag = False
     if not flag:
@@ -161,7 +176,8 @@ def android_to_pc_transfer():
     setup_device(adb_cmd)
     list_packages(adb_cmd)
 
-    take_backup(adb_cmd)
+    # Take backup after asking user for android profile number
+    android_profile_no = take_backup(adb_cmd)
 
     # Setup abe
     if not check_file_in_dir("abe.jar"):  # can create a function similar to setup_tools if needed but this works fine
@@ -191,9 +207,10 @@ def android_to_pc_transfer():
 
     process_backup_files(java_cmd)
 
-    finalize_android_backup()
+    finalize_android_backup(android_profile_no)
+    return android_profile_no
 
 
 if __name__ == "__main__":
-    android_to_pc_transfer()
-    copy_backup_to_pc_folder()
+    android_profile_no = android_to_pc_transfer()
+    copy_backup_to_pc_folder(android_profile_no)

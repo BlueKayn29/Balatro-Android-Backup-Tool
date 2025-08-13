@@ -10,14 +10,12 @@ def pc_to_working_dir(pc_profile_no, android_profile_no):
     main_location = save_location_pc[package_keyword]
     full_location = os.path.join(main_location, pc_profile_no)
     source_file_names = pc_file_names[package_keyword]
-    dest_file_names = android_file_names[package_keyword]
+    dest_file_names = android_profile_to_file_name(android_profile_no)
+    # dest_file_names = android_file_names[package_keyword]
     flag = True
     for (idx, file) in enumerate(source_file_names):
         source_path = os.path.join(full_location, file)
-        if package_keyword == "balatro":
-            destination_path = os.path.join(os.getcwd(), android_profile_no + "-" + source_file_names[idx])
-        else:
-            destination_path = os.path.join(os.getcwd(), dest_file_names[idx])
+        destination_path = os.path.join(os.getcwd(), dest_file_names[idx])
         try:
             shutil.copy2(source_path, destination_path)
         except Exception as e:
@@ -29,15 +27,13 @@ def pc_to_working_dir(pc_profile_no, android_profile_no):
     print()
 
 
-def push_save(adb_cmd, save_files=None):
+def push_save(adb_cmd, android_profile_no=3):
     print("Transferring save files...")
-    if save_files is None:
-        save_files = ["3-profile.jkr", "3-meta.jkr"]
-
     dest = save_location_android[package_keyword]
     package_name = package_keyword_to_name[package_keyword]
+    android_file_names = android_profile_to_file_name(android_profile_no)
 
-    for file_name in save_files:
+    for file_name in android_file_names:
         # (potential adb bug: adb push may fail or truncate the filename if the target filename is omitted)
         execute_command(f"{adb_cmd} push {file_name} /data/local/tmp/{file_name}", commence_msg=None)
         execute_command(f"{adb_cmd} shell run-as {package_name} cp /data/local/tmp/{file_name} {dest}",
@@ -45,14 +41,8 @@ def push_save(adb_cmd, save_files=None):
     print()
 
 
-def pc_to_android_transfer():
+def pc_to_android_transfer(android_profile_no):
     # transfer save files from current dir to android save location via adb (debuggable app required?)
-    #
-    # if initial_check == "n":
-    #     exit(0)
-    # if initial_check != "y":
-    #     exit(1)
-    # print()
 
     adb_cmd = setup_tool(
         tool_name="adb",
@@ -62,7 +52,7 @@ def pc_to_android_transfer():
     )
     setup_device(adb_cmd)
     list_packages(adb_cmd)
-    push_save(adb_cmd)
+    push_save(adb_cmd, android_profile_no)
 
 
 if __name__ == "__main__":
@@ -92,5 +82,5 @@ if __name__ == "__main__":
         exit(1)
 
     pc_to_working_dir(pc_profile_no, android_profile_no)
-    pc_to_android_transfer()
+    pc_to_android_transfer(android_profile_no)
     print("Successfully transferred save files to android. You can now disconnect your device")

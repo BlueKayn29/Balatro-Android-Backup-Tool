@@ -1,46 +1,63 @@
-# BALATRO SAVE TRANSFER TOOL
+# **BALATRO SAVE & BACKUP TOOL**
 
-A Python-based utility to transfer Balatro save files between Android and PC in both directions.
-
----
-
-## Requirements
-- **Python installed and added to PATH**  
-  [How to install Python and add to PATH](https://www.howtogeek.com/197947/how-to-install-python-on-windows/)  
-- **USB debugging enabled** on your Android device  
-- **Internet connection** (to install Python dependencies automatically)  
-
-### Additional requirement for **PC → Android**:
-- The **Android Balatro APK must be debuggable**  
-  [How to make an app debuggable](https://gist.github.com/amahdy/87041554f62e384bee5766a958fd4f9a)
+A set of tools to transfer, backup, and restore Balatro save files between **Android** and **PC**.
 
 ---
 
-## Android → PC Transfer
+## **Requirements**
+- Ensure Python is installed and added to your system PATH.  
+  [How to install Python and add it to PATH](https://www.howtogeek.com/197947/how-to-install-python-on-windows/)
 
-### Steps:
-1. Connect your Android device to your PC/laptop and run the provided `.bat` file.  
-2. When prompted, grant backup permission on your Android device.  
-3. Ensure you have an internet connection so dependencies can be installed automatically.  
-4. If successful, the script will create two backup files in the same directory:  
-   - `1-meta.jkr`  
-   - `1-profile.jkr`  
-   If the files are missing, check the newly created **extracted backup** folder.
+- Ensure you have an active internet connection (for installing dependencies automatically when running the tool).
+
+- **For PC → Android transfer only**:  
+  - The Android Balatro APK must be **debuggable**.  
+    [How to make an app debuggable](https://gist.github.com/amahdy/87041554f62e384bee5766a958fd4f9a)
+
+- **For all Android-related operations**:  
+  - Enable **USB debugging** on your Android device.
+  - Connect your Android device to your PC via USB.
 
 ---
 
-## PC → Android Transfer
+## **Tools Overview**
 
-**WARNING**:  
-You will be asked to:
-- Select a PC profile to copy  
-- Select an Android profile to overwrite  
+### 1. **Android → PC (Save Transfer Tool)**
+Transfers your Balatro saves from an Android device to your PC.
 
-This will replace the selected Android profile with the chosen PC profile.  
-It is highly recommended to backup your Android profile first.
+**Usage:**
+1. Connect your Android device to your PC and run the corresponding `.bat` file.
+2. Grant **backup permission** on your Android device when prompted.
+3. Follow the on-screen instructions and warnings carefully to avoid losing important saves.
 
-### Steps:
-1. Connect your Android device to your PC/laptop and run the provided `.bat` file.  
-2. Ensure USB debugging is enabled.  
-3. Maintain an internet connection to install any dependencies.  
-4. Read the warnings carefully — overwriting cannot be undone without a backup.
+---
+
+### 2. **PC → Android (Save Transfer Tool)**
+Transfers your Balatro saves from your PC to your Android device.
+
+**WARNING:**  
+This will **replace** the selected Android profile with the selected PC profile.  
+It is **highly recommended** to backup your Android profile before proceeding.
+
+**Usage:**
+1. Connect your Android device to your PC and run the corresponding `.bat` file.
+2. Follow the on-screen instructions to select a PC profile to copy and an Android profile to overwrite.
+3. Read all warnings carefully before confirming the operation.
+
+---
+
+### 3. **Backup/Restore Tool**
+Allows you to backup or restore Balatro save files.
+
+**Restore Usage:**
+1. Connect your Android device to your PC.
+2. Run `balatro_restore_saves.bat`.
+3. Place your backup files (`meta.jkr` and `profile.jkr`) in the `to_restore` folder.  
+   - Ensure **only one** `meta.jkr` and one `profile.jkr` file are present.
+4. Follow on-screen instructions to restore your saves.
+
+---
+
+## **Important Notes**
+- Always read the warnings carefully before proceeding with any transfer or restore.
+- Making backups before overwriting saves is strongly advised.
