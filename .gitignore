@@ -1,0 +1,6 @@
+common/platform-tools/
+__pycache__/
+*.jar
+*.jkr
+*.ab
+*.tar

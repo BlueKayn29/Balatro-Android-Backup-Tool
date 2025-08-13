@@ -16,6 +16,7 @@ echo Found Python at %PYTHON_PATH%
 echo Installing required Python packages...
 pip install requests
 
+echo.
 echo Running transfer tool...
 python pc_to_android.py
 pause

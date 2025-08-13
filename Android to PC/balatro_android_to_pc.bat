@@ -16,6 +16,7 @@ echo Found Python at %PYTHON_PATH%
 echo Installing required Python packages...
 pip install requests
 
+echo.
 echo Running backup tool...
 python android_to_pc.py
 pause

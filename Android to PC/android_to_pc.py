@@ -1,25 +1,16 @@
-import io
-import subprocess
-import requests
 import tarfile
-import shutil
 import os
 import sys
-import zipfile
 
-package_keyword = "balatro"
-save_location = {"balatro": [f"extracted_backup/apps/com.playstack.balatro.android/f/1-meta.jkr",
-                             f"extracted_backup/apps/com.playstack.balatro.android/f/1-profile.jkr"]}
-save_location_pc = {"balatro": os.path.join(os.environ["APPDATA"], "Balatro")}
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'common'))  # for helper.py
+from helper import *
+
 backup_file_names = {"balatro": ["1-meta.jkr", "1-profile.jkr"]}
 pc_file_names = {"balatro": ["meta.jkr", "profile.jkr"]}
 abe_download_link = "https://github.com/nelenkov/android-backup-extractor/releases/download/latest/abe-e252b0b.jar"
 # TODO: make dynamic ^^^
-adb_download_link = "https://dl.google.com/android/repository/platform-tools-latest-windows.zip"
 java_download_link = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.16%2B8/" \
                      "OpenJDK17U-jdk_x64_windows_hotspot_17.0.16_8.zip"
-pkg_to_valid_pc_profiles = {"balatro": ["1", "2", "3"]}
-pkg_to_valid_android_profiles = {"balatro": ["1", "2", "3"]}
 
 
 def check_package(stdout):
@@ -68,90 +59,10 @@ def check_existing_backup():
     return flag
 
 
-def setup_tool(tool_name, exe_rel_path, download_url, local_folder):
-    """
-    Ensure a portable tool is available.
-    :param tool_name: Name to check in system PATH (e.g., "java", "adb")
-    :param exe_rel_path: Relative path inside extracted folder to the executable (e.g., "bin/java.exe")
-    :param download_url: URL to download ZIP containing the tool
-    :param local_folder: Folder name to extract to inside script directory
-    :return: Full command path as string, quoted if needed
-    """
-    # If tool is already in PATH
-    if shutil.which(tool_name):
-        print(f"{tool_name} is already installed.\n")
-        return tool_name
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    tool_dir = os.path.join(script_dir, local_folder)
-    tool_path = os.path.join(tool_dir, exe_rel_path)
-
-    # If not found, check inside first subfolder
-    if not os.path.isfile(tool_path) and os.path.isdir(tool_dir):
-        subfolders = [f.path for f in os.scandir(tool_dir) if f.is_dir()]
-        if subfolders:
-            possible_path = os.path.join(subfolders[0], exe_rel_path)
-            if os.path.isfile(possible_path):
-                tool_path = possible_path
-
-    # If local copy exists
-    if os.path.exists(tool_path):
-        print(f"Using local {tool_name} from script directory.\n")
-        return f"\"{tool_path}\""
-
-    # Download tool
-    print(f"{tool_name} not found. Downloading from {download_url}...")
-    response = requests.get(download_url, stream=True)
-    response.raise_for_status()
-
-    with zipfile.ZipFile(io.BytesIO(response.content)) as z:
-        z.extractall(tool_dir)
-
-    # After extraction, check both top-level and first subfolder
-    tool_path = os.path.join(tool_dir, exe_rel_path)
-    if not os.path.isfile(tool_path):
-        subfolders = [f.path for f in os.scandir(tool_dir) if f.is_dir()]
-        if subfolders:
-            possible_path = os.path.join(subfolders[0], exe_rel_path)
-            if os.path.isfile(possible_path):
-                tool_path = possible_path
-
-    if not os.path.isfile(tool_path):
-        print(f"Failed to install {tool_name}")
-        exit(1)
-
-    print(f"{tool_name} installed locally at {tool_path}\n")
-    return f"\"{tool_path}\""
-
-
-def execute_command(command, verbose=True, commence_msg="Executing command", success_msg=None,
-                    error_msg="Command failed", print_std=False, callback=None):
-    if verbose:
-        if commence_msg:
-            print(commence_msg)
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    if result.returncode == 0:
-        if success_msg and verbose:
-            print(success_msg)
-        if callback:
-            status = callback(result.stdout)
-            if not status:
-                sys.exit(1)
-        if print_std and verbose:
-            print("STDOUT: ", result.stdout)
-    else:
-        if verbose:
-            print(error_msg)
-        if print_std and verbose:
-            print("STDERR: ", result.stderr)
-        exit(1)
-    print()
-
-
 def copy_backup_to_pc_folder():
     # transfer save files to balatro pc save location
     make_pc_save = input(f"Do you want to copy the extracted save to the pc version of {package_keyword}?\n"
-                         f" Type Y(Yes) or N(No)").strip().lower()
+                         f"Type Y(Yes) or N(No)").strip().lower()
     if make_pc_save == "n":
         exit(0)
     if make_pc_save != "y":
@@ -164,7 +75,8 @@ def copy_backup_to_pc_folder():
         exit(1)
 
     valid_pc_profiles = pkg_to_valid_pc_profiles[package_keyword]
-    pc_profile_no = input(f"Enter the PC PROFILE NUMBER to OVERWRITE (choose from {', '.join(valid_pc_profiles)}): ").strip().lower()
+    pc_profile_no = input(
+        f"Enter the PC PROFILE NUMBER to OVERWRITE (choose from {', '.join(valid_pc_profiles)}): ").strip().lower()
     if pc_profile_no not in valid_pc_profiles:
         print("Error: This PC profile does not exist.")
         exit(1)
@@ -193,32 +105,7 @@ def copy_backup_to_pc_folder():
         print("Successfully copied Android save files to PC")
 
 
-def backup_tool():
-    # Setup adb
-    adb_cmd = setup_tool(
-        tool_name="adb",
-        exe_rel_path="adb.exe",
-        download_url=adb_download_link,
-        local_folder="platform-tools"
-    ) # TODO: fix path to platform-tools/platform-tools
-
-    # Setup jdk
-    java_cmd = setup_tool(
-        tool_name="java",
-        exe_rel_path=os.path.join("bin", "java.exe"),
-        download_url=java_download_link,
-        local_folder="jdk"
-    )
-
-    # Check for device
-    execute_command(f"{adb_cmd} devices", commence_msg="Checking connected devices...", print_std=False,
-                    callback=device_connection_check)
-
-    # list all packages
-    execute_command(f"{adb_cmd} shell pm list packages",
-                    commence_msg=f"Checking for package associated with {package_keyword} in device...",
-                    callback=check_package)
-
+def take_backup(adb_cmd):
     # take backup if backup doesn't exist
     backup_exists = check_existing_backup()
     if not backup_exists:
@@ -228,24 +115,8 @@ def backup_tool():
     else:
         exit(1)
 
-    # download abe if it doesn't exist
-    if not check_file_in_dir("abe.jar"):
-        print("Downloading Android Backup Extractor...")
-        response = requests.get(abe_download_link)
-        if response.status_code == 200:
-            with open("abe.jar", "wb") as f:
-                f.write(response.content)
-        else:
-            print(f"Download failed Status code: {response.status_code}")
-            exit(1)
-            print("\n")
 
-        if check_file_in_dir("abe.jar"):
-            print("Downloaded ABE successfully")
-        else:
-            print("ABE download finished but couldn't find \"abe.jar\" file")
-        print()
-
+def process_backup_files(java_cmd):
     # use abe to convert to tar file
     execute_command(f"{java_cmd} -jar abe.jar unpack backup.ab backup.tar",
                     commence_msg="Unpacking backup to tar file", error_msg="Converting to tar failed",
@@ -258,8 +129,9 @@ def backup_tool():
         tar.extractall(path=extract_to)
     print(f"Successfully extracted tar files\n")
 
+
+def finalize_android_backup():
     # copy save files to main folder
-    # TODO: add for more apps
     backup_file_paths = save_location["balatro"]
     flag = True
     for path in backup_file_paths:
@@ -277,6 +149,51 @@ def backup_tool():
     print()
 
 
+def android_to_pc_transfer():
+    # Setup adb
+    adb_cmd = setup_tool(
+        tool_name="adb",
+        exe_rel_path="adb.exe",
+        download_url=adb_download_link,
+        local_folder="platform-tools"
+    )
+
+    setup_device(adb_cmd)
+    list_packages(adb_cmd)
+
+    take_backup(adb_cmd)
+
+    # Setup abe
+    if not check_file_in_dir("abe.jar"):  # can create a function similar to setup_tools if needed but this works fine
+        print("Downloading Android Backup Extractor...")
+        response = requests.get(abe_download_link)
+        if response.status_code == 200:
+            with open("abe.jar", "wb") as f:
+                f.write(response.content)
+        else:
+            print(f"Download failed Status code: {response.status_code}")
+            exit(1)
+            print("\n")
+
+        if check_file_in_dir("abe.jar"):
+            print("Downloaded ABE successfully")
+        else:
+            print("ABE download finished but couldn't find \"abe.jar\" file")
+        print()
+
+    # Setup jdk
+    java_cmd = setup_tool(
+        tool_name="java",
+        exe_rel_path=os.path.join("bin", "java.exe"),
+        download_url=java_download_link,
+        local_folder="jdk"
+    )  # FIXME: Potential bug here (setup_tool tool path)
+
+    process_backup_files(java_cmd)
+
+    finalize_android_backup()
+
+
 if __name__ == "__main__":
-    backup_tool()
+    android_to_pc_transfer()
     copy_backup_to_pc_folder()
